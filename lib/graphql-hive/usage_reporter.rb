@@ -30,18 +30,18 @@ module GraphQL
         @thread = Thread.new do
           buffer = []
           while (operation = @queue.pop(false))
-            @options[:logger].debug("add operation to buffer: #{operation}")
+            @options[:logger].info("add operation to buffer: #{operation}")
             buffer << operation
             @options_mutex.synchronize do
               if buffer.size >= @options[:buffer_size]
-                @options[:logger].debug('buffer is full, sending!')
+                @options[:logger].info('buffer is full, sending!')
                 process_operations(buffer)
                 buffer = []
               end
             end
           end
           unless buffer.size.zero?
-            @options[:logger].debug('shuting down with buffer, sending!')
+            @options[:logger].info('shuting down with buffer, sending!')
             process_operations(buffer)
           end
         end
@@ -69,7 +69,7 @@ module GraphQL
           add_operation_to_report(report, operation)
         end
 
-        @options[:logger].debug("sending report: #{report}")
+        @options[:logger].info("sending report: #{report}")
 
         @client.send('/usage', report, :usage)
       end
