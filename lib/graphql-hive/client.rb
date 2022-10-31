@@ -30,8 +30,11 @@ module GraphQL
         request['graphql-client-name'] = 'Hive Ruby Client'
         request['graphql-client-version'] = Graphql::Hive::VERSION
         request.body = JSON.generate(body)
+
+        @options[:logger].info("Sending request body:\n#{request.inspect}")
         response = http.request(request)
 
+        @options[:logger].info("Response received:")
         @options[:logger].info(response.inspect)
         @options[:logger].info(response.body.inspect)
       rescue StandardError => e
