@@ -31,7 +31,7 @@ module GraphQL
         request['graphql-client-version'] = Graphql::Hive::VERSION
         request.body = JSON.generate(body)
 
-        @options[:logger].info("Sending request body:\n#{request.inspect}")
+        @options[:logger].info("Sending request to #{uri.host}:#{uri.port}: #{request.body}")
         response = http.request(request)
 
         @options[:logger].info("Response received:")
