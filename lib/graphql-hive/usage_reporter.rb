@@ -28,10 +28,11 @@ module GraphQL
         @options_mutex = Mutex.new
         @queue = Queue.new
         @thread = Thread.new do
+          @options[:logger].info("[hive] spinning up thread to monitor usage report buffer")
+
           buffer = []
           while (operation = @queue.pop(false))
             @options[:logger].info("add operation to buffer: #{operation}")
-            buffer << operation
             @options_mutex.synchronize do
               if buffer.size >= @options[:buffer_size]
                 @options[:logger].info('buffer is full, sending!')
