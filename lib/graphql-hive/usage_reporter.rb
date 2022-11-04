@@ -48,10 +48,13 @@ module GraphQL
       end
 
       def add_operation(operation)
+        @options[:logger].info("usage_reporter.add_operation begin")
         @queue.push(operation)
+        @options[:logger].info("usage_reporter.add_operation done")
       end
 
       def on_exit
+        @options[:logger].info("usage_reporter.add_operation")
         @queue.close
         @thread.join
       end

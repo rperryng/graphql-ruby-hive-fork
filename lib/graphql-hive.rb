@@ -104,13 +104,14 @@ module GraphQL
 
     # called on trace events
     def platform_trace(platform_key, _key, data)
-      @options[:logger].info("graphql hive platform_trace called.  (options.enabled? #{@options[:enabled]}) (options.collect_usage? #{@options[:collect_usage]})")
-      @options[:logger].info("(platform_key: #{platform_key}) (data #{data})")
-
       return yield unless @options[:enabled] && @options[:collect_usage]
 
       if platform_key == 'execute_multiplex'
+        @options[:logger].info('[hive] query exeuction trace identified.')
+
         if data[:multiplex]
+          @options[:logger].info('[hive] data[:multiplex] found.  yielding.')
+
           queries = data[:multiplex].queries
           timestamp = (Time.now.utc.to_f * 1000).to_i
           starting = Process.clock_gettime(Process::CLOCK_MONOTONIC)
@@ -120,6 +121,7 @@ module GraphQL
           duration = (elapsed.to_f * (10**9)).to_i
 
           # rubocop:disable Layout/LineLength
+          @options[:logger].info("[hive] data[:multiplex] yielded.  Report sending")
           report_usage(timestamp, queries, results, duration) if !queries.empty? && SecureRandom.random_number <= @options[:collect_usage_sampling]
           # rubocop:enable Layout/LineLength
 
