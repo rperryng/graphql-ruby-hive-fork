@@ -28,7 +28,7 @@ module GraphQL
         @options_mutex = Mutex.new
         @queue = Queue.new
         @thread = Thread.new do
-          @options[:logger].info("[hive] spinning up thread to monitor usage report buffer")
+          @options[:logger].info("[hive] spinning up thread to monitor usage report buffer from queue #{queue}")
 
           buffer = []
           while (operation = @queue.pop(false))
@@ -49,9 +49,9 @@ module GraphQL
       end
 
       def add_operation(operation)
-        @options[:logger].info("usage_reporter.add_operation begin")
+        @options[:logger].info("usage_reporter.add_operation adding report to queue (#{queue})")
         @queue.push(operation)
-        @options[:logger].info("usage_reporter.add_operation done")
+        @options[:logger].info("usage_reporter.add_operation done - (queue #{queue} has #{queue.length} reports buffered)")
       end
 
       def on_exit
