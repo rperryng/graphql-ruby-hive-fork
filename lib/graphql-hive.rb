@@ -105,6 +105,7 @@ module GraphQL
     # called on trace events
     def platform_trace(platform_key, _key, data)
       @options[:logger].info("graphql hive platform_trace called.  (options.enabled? #{@options[:enabled]}) (options.collect_usage? #{@options[:collect_usage]})")
+      @options[:logger].info("(platform_key: #{platform_key}) (data #{data})")
 
       return yield unless @options[:enabled] && @options[:collect_usage]
 
