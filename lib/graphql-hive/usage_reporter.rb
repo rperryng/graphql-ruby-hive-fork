@@ -33,6 +33,7 @@ module GraphQL
 
       def add_operation(operation)
         @queue.push(operation)
+        @options[:logger].info("[usage_repoter] operation added, queue size: #{@queue.size}")
       end
 
       def on_exit
@@ -41,25 +42,29 @@ module GraphQL
       end
 
       def on_start
+        @options[:logger]&.info('[usage_reporter] - logger called')
         start_thread
       end
 
       private
 
       def start_thread
+        @options[:logger]&.info('[usage_repoter] start_thread called')
+
         if @thread && @thread.alive?
           @options[:logger].warn("Thread already alive, no need to restart")
           return
         end
 
+        @options[:logger]&.info('[usage_reporter] restarting thread')
         @thread = Thread.new do
           buffer = []
           while (operation = @queue.pop(false))
-            @options[:logger].debug("add operation to buffer: #{operation}")
+            @options[:logger].info("add operation to buffer: #{operation}")
             buffer << operation
             @options_mutex.synchronize do
               if buffer.size >= @options[:buffer_size]
-                @options[:logger].debug('buffer is full, sending!')
+                @options[:logger].info('buffer is full, sending!')
                 process_operations(buffer)
                 buffer = []
               end

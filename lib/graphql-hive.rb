@@ -149,6 +149,7 @@ module GraphQL
     end
 
     def on_start
+      options[:logger]&.info('on_start called')
       @usage_reporter.on_start
     end
 
