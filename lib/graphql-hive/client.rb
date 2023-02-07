@@ -32,10 +32,10 @@ module GraphQL
         request.body = JSON.generate(body)
         response = http.request(request)
 
-        @options[:logger].debug(response.inspect)
-        @options[:logger].debug(response.body.inspect)
+        @options[:logger].info(response.inspect)
+        @options[:logger].info(response.body.inspect)
       rescue StandardError => e
-        @options[:logger].fatal("Failed to send data: #{e}")
+        @options[:logger].error("Failed to send data: #{e}")
       end
     end
   end
