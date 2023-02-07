@@ -74,6 +74,7 @@ module GraphQL
                 @options[:logger].info('buffer is full, sending!')
                 process_operations(buffer)
                 buffer = []
+                @options[:logger].info('buffer sent and reset')
               end
             end
           end
@@ -98,6 +99,9 @@ module GraphQL
         @options[:logger].info("sending report: #{report}")
 
         @client.send('/usage', report, :usage)
+      rescue StandardError => e
+        @options[:logger].error("Failed to send report: #{report}", e)
+        raise e
       end
 
       def add_operation_to_report(report, operation)
