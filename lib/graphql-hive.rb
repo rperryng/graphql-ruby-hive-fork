@@ -117,7 +117,13 @@ module GraphQL
           duration = (elapsed.to_f * (10**9)).to_i
 
           # rubocop:disable Layout/LineLength
-          report_usage(timestamp, queries, results, duration) if !queries.empty? && SecureRandom.random_number <= @options[:collect_usage_sampling]
+          begin
+            @options[:logger].info("graphql-hive, storing query result for usage collection")
+            report_usage(timestamp, queries, results, duration) if !queries.empty? && SecureRandom.random_number <= @options[:collect_usage_sampling]
+            @options[:logger].info("graphql-hive, query result stored")
+          rescue StandardError => e
+            @options[:logger].error("Failed to report usage", e)
+          end
           # rubocop:enable Layout/LineLength
 
           results
