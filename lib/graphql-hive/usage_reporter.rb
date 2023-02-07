@@ -63,7 +63,7 @@ module GraphQL
 
         @options[:logger].info('Starting operations thread')
         @thread = Thread.new do
-          @otions[:logger].info('Operation flushing thread started')
+          @options[:logger].info('Operation flushing thread started')
 
           buffer = []
           while (operation = @queue.pop(false))
