@@ -41,6 +41,7 @@ module GraphQL
       end
 
       def on_start
+        @queue = Queue.new
         start_thread
       end
 
