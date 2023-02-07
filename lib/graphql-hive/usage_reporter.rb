@@ -114,32 +114,18 @@ module GraphQL
         fields = Set.new
 
         queries.each do |query|
-          fields_from_query = begin
-            analyzer = GraphQL::Hive::Analyzer.new(query)
-            visitor = GraphQL::Analysis::AST::Visitor.new(
-              query: query,
-              analyzers: [analyzer]
-            )
-            visitor.visit
-            visitor.result
-          rescue StandardError => e
-            @options[:logger].error(
-              <<~ERROR
-                Failed to collect field usage from query:
-                #{query}
+          analyzer = GraphQL::Hive::Analyzer.new(query)
+          visitor = GraphQL::Analysis::AST::Visitor.new(
+            query: query,
+            analyzers: [analyzer]
+          )
 
-                error:
-                #{e}
-              ERROR
-            )
-            nil
-          end
+          visitor.visit
 
-          next if fields_from_query.nil?
+          fields.merge(analyzer.result)
 
-          fields.merge(fields_from_query)
           operation += "\n" unless operation.empty?
-          operation += GraphQL::Hive::Printer.new.print(fields_from_query)
+          operation += GraphQL::Hive::Printer.new.print(visitor.result)
         end
 
         md5 = Digest::MD5.new
