@@ -139,7 +139,7 @@ module GraphQL
 
           fields.merge(fields_from_query)
           operation += "\n" unless operation.empty?
-          operation += GraphQL::Hive::Printer.new.print(visitor.result)
+          operation += GraphQL::Hive::Printer.new.print(fields_from_query)
         end
 
         md5 = Digest::MD5.new
