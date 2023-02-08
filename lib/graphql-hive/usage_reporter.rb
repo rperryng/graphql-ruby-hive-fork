@@ -66,7 +66,7 @@ module GraphQL
 
         log('Starting operations thread')
         @thread = Thread.new do
-          log('Operation flushing thread started, thread id:', Thread.current.object_id)
+          log('Operation flushing thread started, thread id:')
           buffer = []
           while (operation = @queue.pop(false))
             log("add operation to buffer: #{operation}")
@@ -114,22 +114,22 @@ module GraphQL
       end
 
       def add_operation_to_report(report, operation)
-        log("entered add_operation_to_report", operation)
+        log("entered add_operation_to_report #{operation}")
         timestamp, queries, results, duration = operation
-        log("extracted queries", queries)
-        log("extracted results", results)
+        log("extracted queries #{queries}")
+        log("extracted results #{results}")
 
         errors = errors_from_results(results)
-        log("collected errors from query result", errors)
+        log("collected errors from query result #{errors}")
 
         operation_name = queries.map(&:operations).map(&:keys).flatten.compact.join(', ')
         operation = ''
         fields = Set.new
-        log("extracted operation name", operation_name)
+        log("extracted operation name #{operation_name}")
 
         log("iterating queries (#{queries.size})")
         queries.each do |query|
-          log("iterating query", query)
+          log("iterating query #{query}")
 
           analyzer = GraphQL::Hive::Analyzer.new(query)
           visitor = GraphQL::Analysis::AST::Visitor.new(
@@ -142,18 +142,18 @@ module GraphQL
           log("visiting")
 
           fields.merge(analyzer.result)
-          log("merged", fields)
+          log("merged #{fields}")
 
           operation += "\n" unless operation.empty?
           operation += GraphQL::Hive::Printer.new.print(visitor.result)
-          log("operation appended", operation)
+          log("operation appended #{operation}")
         end
 
-        log("calculating hash for", operation_map_key)
+        log("calculating hash for #{operation_map_key}")
         md5 = Digest::MD5.new
         md5.update operation
         operation_map_key = md5.hexdigest
-        log("added hash", operation_map_key)
+        log("added hash #{operation_map_key}")
 
         operation_record = {
           operationMapKey: operation_map_key,
@@ -165,13 +165,13 @@ module GraphQL
             errors: errors[:errors]
           }
         }
-        log("operation_record created", operation_record)
+        log("operation_record created #{operation_record}")
 
         if results[0]
           log("adding metadata")
           context = results[0].query.context
           operation_record[:metadata] = { client: @options[:client_info].call(context) } if @options[:client_info]
-          log("metadata added", operation_record[:metadata])
+          log("metadata added #{operation_record}")
         end
 
         report[:map][operation_map_key] = {
@@ -181,7 +181,7 @@ module GraphQL
         }
         report[:operations] << operation_record
         report[:size] += 1
-        log("report updated", report)
+        log("report updated #{report}")
       end
 
       def errors_from_results(results)
@@ -196,8 +196,12 @@ module GraphQL
         acc
       end
 
-      def log(msg)
-        @options[:logger].info("#{tag}: #{msg}")
+      def log(msg, level: :info)
+        if level == :info
+          @options[:logger].info("#{tag}: #{msg}")
+        else
+          @options[:logger].error("#{tag}: #{msg}")
+        end
       end
 
       def tag
