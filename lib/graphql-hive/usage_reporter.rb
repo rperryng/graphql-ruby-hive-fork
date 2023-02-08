@@ -88,6 +88,9 @@ module GraphQL
             @options[:logger].info('shuting down with buffer, sending!')
             process_operations(buffer)
           end
+        rescue Exception => e
+          @options[:logger].info("Operations flushing thread terminating", e)
+          raise e
         end
       end
 
@@ -147,6 +150,7 @@ module GraphQL
           @options[:logger].info("[#{Thread.current.object_id}]: [graphql-hive] operation appended", operation)
         end
 
+        @options[:logger].info("[#{Thread.current.object_id}]: [graphql-hive] calculating hash for", operation_map_key)
         md5 = Digest::MD5.new
         md5.update operation
         operation_map_key = md5.hexdigest
