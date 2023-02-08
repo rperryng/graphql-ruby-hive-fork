@@ -89,6 +89,7 @@ module GraphQL
           end
         rescue Exception => e
           @options[:logger].error("[#{tag}]: Operations flushing thread terminating")
+          @options[:logger].error(e)
           raise e
         end
       end
@@ -108,9 +109,6 @@ module GraphQL
         log("sending report: #{report}")
 
         @client.send('/usage', report, :usage)
-      rescue StandardError => e
-        @options[:logger].error("[#{tag}]Failed to send report: #{report}")
-        raise e
       end
 
       def add_operation_to_report(report, operation)
