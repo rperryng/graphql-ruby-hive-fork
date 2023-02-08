@@ -87,7 +87,7 @@ module GraphQL
             log('shuting down with buffer, sending!')
             process_operations(buffer)
           end
-        rescue Exception => e
+        rescue StandardError => e
           @options[:logger].error("[#{tag}]: Operations flushing thread terminating")
           @options[:logger].error(e)
           raise e
