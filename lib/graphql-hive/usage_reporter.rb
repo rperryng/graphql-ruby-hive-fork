@@ -64,7 +64,6 @@ module GraphQL
         @options[:logger].info('Starting operations thread')
         @thread = Thread.new do
           @options[:logger].info('Operation flushing thread started')
-
           buffer = []
           while (operation = @queue.pop(false))
             @options[:logger].info("add operation to buffer: #{operation}")
@@ -78,6 +77,9 @@ module GraphQL
               end
             end
           end
+
+          @options[:logger].info('Queue closed, exiting thread')
+
           unless buffer.size.zero?
             @options[:logger].info('shuting down with buffer, sending!')
             process_operations(buffer)
@@ -93,6 +95,7 @@ module GraphQL
         }
 
         operations.each do |operation|
+          @options[:logger].info("adding operation to report")
           add_operation_to_report(report, operation)
         end
 
@@ -106,31 +109,43 @@ module GraphQL
 
       def add_operation_to_report(report, operation)
         timestamp, queries, results, duration = operation
+        @options[:logger].info("adding operation to report", operation)
+        @options[:logger].info("results", results)
 
         errors = errors_from_results(results)
+        @options[:logger].info("collected errors from query result", errors)
 
         operation_name = queries.map(&:operations).map(&:keys).flatten.compact.join(', ')
         operation = ''
         fields = Set.new
+        @options[:logger].info("extracted operation name", operation_name)
 
+        @options[:logger].info("iterating queries (#{queries.size})")
         queries.each do |query|
+          @options[:logger].info("iterating query", query)
+
           analyzer = GraphQL::Hive::Analyzer.new(query)
           visitor = GraphQL::Analysis::AST::Visitor.new(
             query: query,
             analyzers: [analyzer]
           )
+          @options[:logger].info("analyizer and visitor created")
 
           visitor.visit
+          @options[:logger].info("visiting")
 
           fields.merge(analyzer.result)
+          @options[:logger].info("merged", fields)
 
           operation += "\n" unless operation.empty?
           operation += GraphQL::Hive::Printer.new.print(visitor.result)
+          @options[:logger].info("operation appended", operation)
         end
 
         md5 = Digest::MD5.new
         md5.update operation
         operation_map_key = md5.hexdigest
+        @options[:logger].info("added hash", operation_map_key)
 
         operation_record = {
           operationMapKey: operation_map_key,
@@ -142,10 +157,13 @@ module GraphQL
             errors: errors[:errors]
           }
         }
+        @options[:logger].info("operation_record created", operation_record)
 
         if results[0]
+          @options[:logger].info("adding metadata")
           context = results[0].query.context
           operation_record[:metadata] = { client: @options[:client_info].call(context) } if @options[:client_info]
+          @options[:logger].info("metadata added", operation_record[:metadata])
         end
 
         report[:map][operation_map_key] = {
@@ -155,6 +173,7 @@ module GraphQL
         }
         report[:operations] << operation_record
         report[:size] += 1
+        @options[:logger].info("report updated", report)
       end
 
       def errors_from_results(results)
