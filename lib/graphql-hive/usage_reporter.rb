@@ -49,7 +49,7 @@ module GraphQL
 
       def start_thread
         if @thread&.alive?
-          @options[:logger].warn('Tried to start operations flushing thread but it was already alive')
+          @options[:logger].warn("[#{tag}] Tried to start operations flushing thread but it was already alive")
           return
         end
 
@@ -62,8 +62,7 @@ module GraphQL
           @queue = Queue.new
         end
 
-        # otherwise the thread will just silently die when exceptions occur
-        Thread.abort_on_exception = true
+        # Thread.abort_on_exception = true
 
         log('Starting operations thread')
         @thread = Thread.new do
@@ -89,7 +88,7 @@ module GraphQL
             process_operations(buffer)
           end
         rescue Exception => e
-          log("Operations flushing thread terminating", e)
+          @options[:logger].error("[#{tag}]: Operations flushing thread terminating", e)
           raise e
         end
       end
@@ -110,7 +109,7 @@ module GraphQL
 
         @client.send('/usage', report, :usage)
       rescue StandardError => e
-        @options[:logger].error("Failed to send report: #{report}", e)
+        @options[:logger].error("[#{tag}]Failed to send report: #{report}", e)
         raise e
       end
 
@@ -197,18 +196,12 @@ module GraphQL
         acc
       end
 
-      def log(msg, level: :info, error: nil)
-        prefix = "[graphql-hive (T:#{Thread.current.object_id})]"
+      def log(msg)
+        @options[:logger].info("#{tag}: #{msg}")
+      end
 
-        if level == :info
-          @options[:logger].info("#{prefix}: #{msg}")
-        elsif level == :error
-          if (error.nil?)
-            @options[:logger].error("#{prefix}: #{msg}")
-          else
-            @options[:logger].error("#{prefix}: #{msg}", error)
-          end
-        end
+      def tag
+        "[graphql-hive (T:#{Thread.current.object_id})]"
       end
     end
   end
