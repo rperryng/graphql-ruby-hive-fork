@@ -33,7 +33,7 @@ module GraphQL
 
       def add_operation(operation)
         @queue.push(operation)
-        @options[:logger].info("operation added, buffer size: #{@queue.size}")
+        log("operation added, buffer size: #{@queue.size}")
       end
 
       def on_exit
@@ -58,38 +58,38 @@ module GraphQL
         end
 
         if @queue.closed?
-          @options[:logger].info('Re-created graphql hive queue')
+          log('Re-created graphql hive queue')
           @queue = Queue.new
         end
 
         # otherwise the thread will just silently die when exceptions occur
         Thread.abort_on_exception = true
 
-        @options[:logger].info('Starting operations thread')
+        log('Starting operations thread')
         @thread = Thread.new do
-          @options[:logger].info('Operation flushing thread started, thread id:', Thread.current.object_id)
+          log('Operation flushing thread started, thread id:', Thread.current.object_id)
           buffer = []
           while (operation = @queue.pop(false))
-            @options[:logger].info("[#{Thread.current.object_id}]: add operation to buffer: #{operation}")
+            log("add operation to buffer: #{operation}")
             buffer << operation
             @options_mutex.synchronize do
               if buffer.size >= @options[:buffer_size]
-                @options[:logger].info('buffer is full, sending!')
+                log('buffer is full, sending!')
                 process_operations(buffer)
                 buffer = []
-                @options[:logger].info('buffer sent and reset')
+                log('buffer sent and reset')
               end
             end
           end
 
-          @options[:logger].info('Queue closed, exiting thread')
+          log('Queue closed, exiting thread')
 
           unless buffer.size.zero?
-            @options[:logger].info('shuting down with buffer, sending!')
+            log('shuting down with buffer, sending!')
             process_operations(buffer)
           end
         rescue Exception => e
-          @options[:logger].info("Operations flushing thread terminating", e)
+          log("Operations flushing thread terminating", e)
           raise e
         end
       end
@@ -102,11 +102,11 @@ module GraphQL
         }
 
         operations.each do |operation|
-          @options[:logger].info("[#{Thread.current.object_id}]: [graphql-hive] adding operation to report")
+          log("adding operation to report")
           add_operation_to_report(report, operation)
         end
 
-        @options[:logger].info("[#{Thread.current.object_id}]: [graphql-hive] sending report: #{report}")
+        log("sending report: #{report}")
 
         @client.send('/usage', report, :usage)
       rescue StandardError => e
@@ -115,46 +115,46 @@ module GraphQL
       end
 
       def add_operation_to_report(report, operation)
-        @options[:logger].info("[#{Thread.current.object_id}]: [graphql-hive] entered add_operation_to_report", operation)
+        log("entered add_operation_to_report", operation)
         timestamp, queries, results, duration = operation
-        @options[:logger].info("[#{Thread.current.object_id}]: [graphql-hive] extracted queries", queries)
-        @options[:logger].info("[#{Thread.current.object_id}]: [graphql-hive] extracted results", results)
+        log("extracted queries", queries)
+        log("extracted results", results)
 
         errors = errors_from_results(results)
-        @options[:logger].info("[#{Thread.current.object_id}]: [graphql-hive] collected errors from query result", errors)
+        log("collected errors from query result", errors)
 
         operation_name = queries.map(&:operations).map(&:keys).flatten.compact.join(', ')
         operation = ''
         fields = Set.new
-        @options[:logger].info("[#{Thread.current.object_id}]: [graphql-hive] extracted operation name", operation_name)
+        log("extracted operation name", operation_name)
 
-        @options[:logger].info("[#{Thread.current.object_id}]: [graphql-hive] iterating queries (#{queries.size})")
+        log("iterating queries (#{queries.size})")
         queries.each do |query|
-          @options[:logger].info("[#{Thread.current.object_id}]: [graphql-hive] iterating query", query)
+          log("iterating query", query)
 
           analyzer = GraphQL::Hive::Analyzer.new(query)
           visitor = GraphQL::Analysis::AST::Visitor.new(
             query: query,
             analyzers: [analyzer]
           )
-          @options[:logger].info("[#{Thread.current.object_id}]: [graphql-hive] analyizer and visitor created")
+          log("analyizer and visitor created")
 
           visitor.visit
-          @options[:logger].info("[#{Thread.current.object_id}]: [graphql-hive] visiting")
+          log("visiting")
 
           fields.merge(analyzer.result)
-          @options[:logger].info("[#{Thread.current.object_id}]: [graphql-hive] merged", fields)
+          log("merged", fields)
 
           operation += "\n" unless operation.empty?
           operation += GraphQL::Hive::Printer.new.print(visitor.result)
-          @options[:logger].info("[#{Thread.current.object_id}]: [graphql-hive] operation appended", operation)
+          log("operation appended", operation)
         end
 
-        @options[:logger].info("[#{Thread.current.object_id}]: [graphql-hive] calculating hash for", operation_map_key)
+        log("calculating hash for", operation_map_key)
         md5 = Digest::MD5.new
         md5.update operation
         operation_map_key = md5.hexdigest
-        @options[:logger].info("[#{Thread.current.object_id}]: [graphql-hive] added hash", operation_map_key)
+        log("added hash", operation_map_key)
 
         operation_record = {
           operationMapKey: operation_map_key,
@@ -166,13 +166,13 @@ module GraphQL
             errors: errors[:errors]
           }
         }
-        @options[:logger].info("[#{Thread.current.object_id}]: [graphql-hive] operation_record created", operation_record)
+        log("operation_record created", operation_record)
 
         if results[0]
-          @options[:logger].info("[#{Thread.current.object_id}]: [graphql-hive] adding metadata")
+          log("adding metadata")
           context = results[0].query.context
           operation_record[:metadata] = { client: @options[:client_info].call(context) } if @options[:client_info]
-          @options[:logger].info("[#{Thread.current.object_id}]: [graphql-hive] metadata added", operation_record[:metadata])
+          log("metadata added", operation_record[:metadata])
         end
 
         report[:map][operation_map_key] = {
@@ -182,7 +182,7 @@ module GraphQL
         }
         report[:operations] << operation_record
         report[:size] += 1
-        @options[:logger].info("[#{Thread.current.object_id}]: [graphql-hive] report updated", report)
+        log("report updated", report)
       end
 
       def errors_from_results(results)
@@ -195,6 +195,20 @@ module GraphQL
           end
         end
         acc
+      end
+
+      def log(msg, level: :info, error: nil)
+        prefix = "[graphql-hive (T:#{Thread.current.object_id})]"
+
+        if level == :info
+          @options[:logger].info("#{prefix}: #{msg}")
+        elsif level == :error
+          if (error.nil?)
+            @options[:logger].error("#{prefix}: #{msg}")
+          else
+            @options[:logger].error("#{prefix}: #{msg}", error)
+          end
+        end
       end
     end
   end
