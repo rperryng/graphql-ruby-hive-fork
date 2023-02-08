@@ -80,9 +80,6 @@ module GraphQL
                 @options[:logger].info('buffer sent and reset')
               end
             end
-          rescue Exception => e
-            @options[:logger].error("operation flushing thread encountered error, dying", e)
-            raise e
           end
 
           @options[:logger].info('Queue closed, exiting thread')
