@@ -149,7 +149,7 @@ module GraphQL
           log("operation appended #{operation}")
         end
 
-        log("calculating hash for #{operation_map_key}")
+        log("calculating hash for #{operation_name}")
         md5 = Digest::MD5.new
         md5.update operation
         operation_map_key = md5.hexdigest
