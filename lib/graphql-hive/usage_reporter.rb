@@ -33,6 +33,7 @@ module GraphQL
 
       def add_operation(operation)
         @queue.push(operation)
+        @options[:logger].info("operation added, buffer size: #{@queue.size}")
       end
 
       def on_exit
@@ -95,11 +96,11 @@ module GraphQL
         }
 
         operations.each do |operation|
-          @options[:logger].info("adding operation to report")
+          @options[:logger].info("[graphql-hive] adding operation to report")
           add_operation_to_report(report, operation)
         end
 
-        @options[:logger].info("sending report: #{report}")
+        @options[:logger].info("[graphql-hive] sending report: #{report}")
 
         @client.send('/usage', report, :usage)
       rescue StandardError => e
@@ -108,44 +109,45 @@ module GraphQL
       end
 
       def add_operation_to_report(report, operation)
+        @options[:logger].info("[graphql-hive] entered add_operation_to_report", operation)
         timestamp, queries, results, duration = operation
-        @options[:logger].info("adding operation to report", operation)
-        @options[:logger].info("results", results)
+        @options[:logger].info("[graphql-hive] extracted queries", queries)
+        @options[:logger].info("[graphql-hive] extracted results", results)
 
         errors = errors_from_results(results)
-        @options[:logger].info("collected errors from query result", errors)
+        @options[:logger].info("[graphql-hive] collected errors from query result", errors)
 
         operation_name = queries.map(&:operations).map(&:keys).flatten.compact.join(', ')
         operation = ''
         fields = Set.new
-        @options[:logger].info("extracted operation name", operation_name)
+        @options[:logger].info("[graphql-hive] extracted operation name", operation_name)
 
-        @options[:logger].info("iterating queries (#{queries.size})")
+        @options[:logger].info("[graphql-hive] iterating queries (#{queries.size})")
         queries.each do |query|
-          @options[:logger].info("iterating query", query)
+          @options[:logger].info("[graphql-hive] iterating query", query)
 
           analyzer = GraphQL::Hive::Analyzer.new(query)
           visitor = GraphQL::Analysis::AST::Visitor.new(
             query: query,
             analyzers: [analyzer]
           )
-          @options[:logger].info("analyizer and visitor created")
+          @options[:logger].info("[graphql-hive] analyizer and visitor created")
 
           visitor.visit
-          @options[:logger].info("visiting")
+          @options[:logger].info("[graphql-hive] visiting")
 
           fields.merge(analyzer.result)
-          @options[:logger].info("merged", fields)
+          @options[:logger].info("[graphql-hive] merged", fields)
 
           operation += "\n" unless operation.empty?
           operation += GraphQL::Hive::Printer.new.print(visitor.result)
-          @options[:logger].info("operation appended", operation)
+          @options[:logger].info("[graphql-hive] operation appended", operation)
         end
 
         md5 = Digest::MD5.new
         md5.update operation
         operation_map_key = md5.hexdigest
-        @options[:logger].info("added hash", operation_map_key)
+        @options[:logger].info("[graphql-hive] added hash", operation_map_key)
 
         operation_record = {
           operationMapKey: operation_map_key,
@@ -157,13 +159,13 @@ module GraphQL
             errors: errors[:errors]
           }
         }
-        @options[:logger].info("operation_record created", operation_record)
+        @options[:logger].info("[graphql-hive] operation_record created", operation_record)
 
         if results[0]
-          @options[:logger].info("adding metadata")
+          @options[:logger].info("[graphql-hive] adding metadata")
           context = results[0].query.context
           operation_record[:metadata] = { client: @options[:client_info].call(context) } if @options[:client_info]
-          @options[:logger].info("metadata added", operation_record[:metadata])
+          @options[:logger].info("[graphql-hive] metadata added", operation_record[:metadata])
         end
 
         report[:map][operation_map_key] = {
@@ -173,7 +175,7 @@ module GraphQL
         }
         report[:operations] << operation_record
         report[:size] += 1
-        @options[:logger].info("report updated", report)
+        @options[:logger].info("[graphql-hive] report updated", report)
       end
 
       def errors_from_results(results)
