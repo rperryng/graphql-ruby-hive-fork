@@ -14,6 +14,22 @@ RSpec.describe 'GraphQL::Hive::Printer' do
       truncatedPreview: String!
     }
 
+    interface HasPublisher {
+      publisher: Publisher
+    }
+
+    type Publisher {
+      name: String!
+    }
+
+    interface HasAuthor {
+      author: Author
+    }
+
+    type Author {
+      name: String!
+    }
+
     """
     The query root of this schema
     """
@@ -46,12 +62,66 @@ RSpec.describe 'GraphQL::Hive::Printer' do
     query = GraphQL::Query.new(schema, query_string)
 
     expected_result = %|query GetPost2 {
-  post(id: 0, test: TEST1) {
-    id
-    title
-  }
-}|
+      post(id: 0, test: TEST1) {
+        id
+        title
+      }
+    }|
 
     expect(GraphQL::Hive::Printer.new.print(query.document)).to eq(expected_result)
+  end
+
+  context 'with query containing inline and spread fragment selections' do
+    let(:query_string) do
+      %|
+      query GetPost {
+        post(id: 9, test: TEST1) {
+          ... PostFragment
+          ... on HasAuthor {
+            author {
+              name
+            }
+          }
+          ... on HasPublisher {
+            publisher {
+              name
+            }
+          }
+        }
+      }
+
+      fragment PostFragment on Post {
+        id
+      }
+      |
+    end
+
+    it 'sorts inline fragments and spread fragments by their type name' do
+      query = GraphQL::Query.new(schema, query_string)
+
+      expected_result = <<~GRAPHQL.chomp
+        query GetPost {
+          post(id: 0, test: TEST1) {
+            ... on HasAuthor {
+              author {
+                name
+              }
+            }
+            ... on HasPublisher {
+              publisher {
+                name
+              }
+            }
+            ...PostFragment
+          }
+        }
+
+        fragment PostFragment on Post {
+          id
+        }
+      GRAPHQL
+
+      expect(GraphQL::Hive::Printer.new.print(query.document)).to eq(expected_result)
+    end
   end
 end
